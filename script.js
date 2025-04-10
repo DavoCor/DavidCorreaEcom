@@ -9,7 +9,6 @@ const productos = [
 ];
 
 let carrito = new Map();
-
 const contenedorProductos = document.getElementById("productos");
 const listaCarrito = document.getElementById("lista-carrito");
 const totalCarrito = document.getElementById("total");
@@ -65,7 +64,7 @@ function actualizarCarrito() {
   });
 
   totalCarrito.textContent = total.toFixed(2);
-  contenedorPayPal.style.display = carrito.size > 0 ? "block" : "none";
+  contenedorPayPal.style.display = "none";
 }
 
 function eliminarDelCarrito(id) {
@@ -84,7 +83,6 @@ function eliminarDelCarrito(id) {
 
 function vaciarCarrito() {
   if (carrito.size === 0) return;
-
   if (confirm("¿Vaciar todo el carrito?")) {
     carrito.clear();
     guardarCarrito();
@@ -104,22 +102,25 @@ function cargarCarrito() {
   }
 }
 
-// PayPal
-if (window.paypal) {
+function mostrarPayPal() {
+  const total = Array.from(carrito.values()).reduce((acc, item) => acc + item.precio * item.cantidad, 0);
+  if (total <= 0) {
+    alert("Tu carrito está vacío");
+    return;
+  }
+
+  contenedorPayPal.innerHTML = "";
+  contenedorPayPal.style.display = "block";
+
   paypal.Buttons({
-    createOrder: function (data, actions) {
-      const total = Array.from(carrito.values()).reduce((acc, item) => acc + item.precio * item.cantidad, 0);
-      return actions.order.create({
-        purchase_units: [{ amount: { value: total.toFixed(2) } }]
-      });
-    },
-    onApprove: function (data, actions) {
-      return actions.order.capture().then(function (details) {
-        alert(`¡Gracias ${details.payer.name.given_name}, tu compra fue exitosa!`);
-        vaciarCarrito();
-      });
-    },
-    onError: function (err) {
+    createOrder: (data, actions) => actions.order.create({
+      purchase_units: [{ amount: { value: total.toFixed(2) } }]
+    }),
+    onApprove: (data, actions) => actions.order.capture().then(details => {
+      alert(`¡Gracias ${details.payer.name.given_name}, tu compra fue exitosa!`);
+      vaciarCarrito();
+    }),
+    onError: err => {
       console.error("Error con PayPal:", err);
       alert("Hubo un problema con el pago.");
     }
@@ -128,35 +129,4 @@ if (window.paypal) {
 
 filtrarPorCategoria();
 cargarCarrito();
-// ... productos y carrito como antes
 
-function mostrarPayPal() {
-  const total = Array.from(carrito.values()).reduce((acc, item) => acc + item.precio * item.cantidad, 0);
-  if (total <= 0) {
-    alert("Tu carrito está vacío");
-    return;
-  }
-
-  const paypalContainer = document.getElementById("paypal-button-container");
-  paypalContainer.style.display = "block";
-
-  if (paypalContainer.children.length === 0) {
-    paypal.Buttons({
-      createOrder: function (data, actions) {
-        return actions.order.create({
-          purchase_units: [{ amount: { value: total.toFixed(2) } }]
-        });
-      },
-      onApprove: function (data, actions) {
-        return actions.order.capture().then(function (details) {
-          alert(`¡Gracias ${details.payer.name.given_name}, tu compra fue exitosa!`);
-          vaciarCarrito();
-        });
-      },
-      onError: function (err) {
-        console.error("Error con PayPal:", err);
-        alert("Hubo un problema con el pago.");
-      }
-    }).render("#paypal-button-container");
-  }
-}
